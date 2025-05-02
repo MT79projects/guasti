@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gestione Ticket - Area Riservata</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 30px;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      margin: 0 10px;
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .tab.active {
+      background-color: #2980b9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .export {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .clear {
+      background-color: #e74c3c;
+      color: white;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gestione Ticket - Area Riservata</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="cambiaTab('tutti')">Tutti</div>
+    <div class="tab" onclick="cambiaTab('Impianto Elettrico')">Impianto Elettrico</div>
+    <div class="tab" onclick="cambiaTab('Impianto Idraulico')">Impianto Idraulico</div>
+    <div class="tab" onclick="cambiaTab('Condizionamento')">Condizionamento</div>
+    <div class="tab" onclick="cambiaTab('Riscaldamento')">Riscaldamento</div>
+    <div class="tab" onclick="cambiaTab('Fotovoltaico')">Fotovoltaico</div>
+  </div>
+
+  <div id="ticket-container">
+    <table id="ticket-table">
+      <thead>
+        <tr id="header-row"></tr>
+      </thead>
+      <tbody id="ticket-body"></tbody>
+    </table>
+  </div>
+  <button class="export" onclick="esportaCSV()">Esporta in CSV</button>
+  <button class="export" onclick="esportaXLSX()">Esporta in Excel</button>
+  <button class="clear" onclick="svuotaArchivio()">Svuota Archivio</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  const headers = [
+    "Ticket", "Impianto", "Tipologia", "Cognome", "Nome", "Azienda",
+    "Telefono", "Citta", "Provincia", "CAP", "Via", "Civico",
+    "Email", "Descrizione", "Timestamp"
+  ];
+  let impiantoSelezionato = 'tutti'; // Default to 'tutti'
+  let archivio = []; // Salva i ticket ricevuti dalla fetch
+
+  // Funzione per cambiare il tab selezionato
+  function cambiaTab(impianto) {
+    impiantoSelezionato = impianto;
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    document.querySelector(`.tab[onclick="cambiaTab('${impianto}')"]`).classList.add('active');
+    caricaTabella(); // Ricarica i ticket con l'impianto selezionato
+  }
+
+  // Funzione per caricare i ticket dalla pagina di gestione
+  function caricaTabella() {
+    fetch("carica_ticket.php")
+      .then(res => res.json())
+      .then(data => {
+        archivio = data; // Salva i dati dell'archivio
+        const headerRow = document.getElementById("header-row");
+        const body = document.getElementById("ticket-body");
+        headerRow.innerHTML = "";
+        body.innerHTML = "";
+
+        headers.forEach(h => {
+          const th = document.createElement("th");
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+
+        // Aggiungi la colonna per il pulsante di cancellazione
+        const th = document.createElement("th");
+        th.textContent = "Azione";
+        headerRow.appendChild(th);
+
+        if (archivio.length === 0) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = headers.length;
+          td.textContent = "Nessun ticket disponibile.";
+          tr.appendChild(td);
+          body.appendChild(tr);
+          return;
+        }
+
+        // Filtro per i ticket in base all'impianto selezionato
+        let ticketsFiltrati;
+        if (impiantoSelezionato === 'tutti') {
+          ticketsFiltrati = archivio;
+        } else {
+          ticketsFiltrati = archivio.filter(ticket => ticket.impianto === impiantoSelezionato);
+        }
+
+        ticketsFiltrati.forEach((row, index) => {
+          const tr = document.createElement("tr");
+          headers.forEach(key => {
+            const td = document.createElement("td");
+            td.textContent = row[key.toLowerCase()] || "";
+            tr.appendChild(td);
+          });
+
+          // Crea il pulsante di cancellazione
+          const tdDelete = document.createElement("td");
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Cancella";
+          deleteBtn.className = "delete-btn";
+          deleteBtn.onclick = () => eliminaTicket(index); // Aggiungi il ticket da eliminare
+          tdDelete.appendChild(deleteBtn);
+          tr.appendChild(tdDelete);
+
+          body.appendChild(tr);
+        });
+      })
+      .catch(error => console.log("Errore nel caricare i ticket", error));
+  }
+
+  // Funzione per eliminare il ticket
+  function eliminaTicket(index) {
+    if (confirm("Sei sicuro di voler eliminare questo ticket?")) {
+      fetch("elimina_ticket.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ index: index })
+      })
+      .then(res => res.json())
+      .then(response => {
+        if (response.success) {
+          alert("Ticket eliminato correttamente.");
+          caricaTabella();
+        } else {
+          alert("Errore nell'eliminazione del ticket.");
+        }
+      })
+      .catch(error => alert("Errore di connessione."));
+    }
+  }
+
+  // Funzione per esportare in CSV
+  function esportaCSV() {
+    const ticketsFiltrati = impiantoSelezionato === 'tutti'
+      ? archivio
+      : archivio.filter(ticket => ticket.impianto === impiantoSelezionato);
+
+    if (ticketsFiltrati.length === 0) {
+      alert("Nessun ticket da esportare.");
+      return;
+    }
+
+    let csv = [headers.join(",")];
+    ticketsFiltrati.forEach(ticket => {
+      const riga = [
+        ticket.ticket,
+        ticket.impianto,
+        ticket.tipologia,
+        ticket.cognome,
+        ticket.nome,
+        ticket.azienda,
+        ticket.telefono,
+        ticket.citta,
+        ticket.provincia,
+        ticket.cap,
+        ticket.via,
+        ticket.civico,
+        ticket.email,
+        ticket.descrizione,
+        ticket.timestamp
+      ];
+
+      csv.push(riga.map(val => `"${(val ?? "").toString().replace(/"/g, '""')}"`).join(","));
+    });
+
+    const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ticket_segnalazioni.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Funzione per esportare in XLSX
+  function esportaXLSX() {
+    const ticketsFiltrati = impiantoSelezionato === 'tutti'
+      ? archivio
+      : archivio.filter(ticket => ticket.impianto === impiantoSelezionato);
+
+    if (ticketsFiltrati.length === 0) {
+      alert("Nessun ticket da esportare.");
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(ticketsFiltrati);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tickets");
+    XLSX.writeFile(wb, "ticket_segnalazioni.xlsx");
+  }
+
+  // Funzione per svuotare l'archivio
+  function svuotaArchivio() {
+    if (confirm("Sei sicuro di voler svuotare l'archivio?")) {
+      fetch("svuota_archivio.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        }
+      })
+      .then(res => res.json())
+      .then(response => {
+        if (response.success) {
+          alert("Archivio svuotato correttamente.");
+          caricaTabella();
+        } else {
+          alert("Errore nel svuotamento dell'archivio.");
+        }
+      })
+      .catch(error => alert("Errore di connessione."));
+    }
+  }
+
+  // Carica inizialmente i ticket quando la pagina viene caricata
+  window.onload = caricaTabella;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Segnalazione Guasti</title>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 40px;
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .tab-button {
+      padding: 10px 20px;
+      margin: 0 5px;
+      border: none;
+      background-color: #ecf0f1;
+      color: #2c3e50; 
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .tab-button.active {
+      background-color: #3498db;
+      color: #fff;
+    }
+    .form-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      background-size: cover;
+      background-position: center;
+      transition: background 0.3s ease-in-out;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: white;
+    }
+    input, select, textarea {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .submit-button {
+      margin-top: 30px;
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #2ecc71;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Modulo Segnalazione Guasti</h2>
+  <div class="tabs">
+    <button class="tab-button active" data-tab="elettrico">Impianto Elettrico</button>
+    <button class="tab-button" data-tab="idraulico">Impianto Idraulico</button>
+    <button class="tab-button" data-tab="condizionamento">Condizionamento</button>
+    <button class="tab-button" data-tab="riscaldamento">Riscaldamento</button>
+    <button class="tab-button" data-tab="fotovoltaico">Fotovoltaico</button>
+  </div>
+
+  <div id="form-wrapper" class="form-container">
+    <form id="form">
+      <input type="hidden" name="title" id="title" value="Impianto Elettrico">
+      <div class="form-grid">
+        <div class="field">
+          <label for="tipologia">Tipologia Allarme</label>
+          <select name="tipologia" id="tipologia"></select>
+        </div>
+        <div class="field">
+          <label for="cognome">Cognome</label>
+          <input type="text" name="cognome" required />
+        </div>
+        <div class="field">
+          <label for="nome">Nome</label>
+          <input type="text" name="nome" required />
+        </div>
+        <div class="field">
+          <label for="azienda">Azienda</label>
+          <input type="text" name="azienda" />
+        </div>
+        <div class="field">
+          <label for="telefono">Telefono</label>
+          <input type="tel" name="telefono" placeholder="Es. 3331234567" pattern="[0-9]{10}" />
+        </div>
+        <div class="field">
+          <label for="citta">Città</label>
+          <input type="text" name="citta" required />
+        </div>
+        <div class="field">
+          <label for="provincia">Provincia</label>
+          <input type="text" name="provincia" required />
+        </div>
+        <div class="field">
+          <label for="cap">CAP</label>
+          <input type="text" name="cap" required />
+        </div>
+        <div class="field">
+          <label for="via">Via</label>
+          <input type="text" name="via" required />
+        </div>
+        <div class="field">
+          <label for="civico">Numero Civico</label>
+          <input type="text" name="civico" required />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" name="email" required />
+        </div>
+      </div>
+      <div class="field" style="margin-top: 20px">
+        <label for="descrizione">Descrizione del Problema</label>
+        <textarea name="descrizione" required></textarea>
+      </div>
+      <button type="submit" class="submit-button">Invia Segnalazione</button>
+    </form>
+  </div>
+
+<script>
+  emailjs.init("PI6dIvX8Xl0gHKRI9");
+
+  const tipologieMap = {
+    elettrico: ["Corto circuito", "Salvavita scattato", "Luci non funzionanti"],
+    idraulico: ["Perdita acqua", "Pressione bassa", "Rubinetto rotto"],
+    condizionamento: ["Non raffredda", "Perdita gas", "Rumori anomali"],
+    riscaldamento: ["Caldaia spenta", "Termosifone freddo", "Perdita impianto"],
+    fotovoltaico: ["Inverter spento", "Bassa produzione", "Allarme inverter"]
+  };
+
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const tipologiaSelect = document.getElementById("tipologia");
+  const formContainer = document.getElementById("form-wrapper");
+
+  function aggiornaTipologie(tab) {
+    tipologiaSelect.innerHTML = tipologieMap[tab]
+      .map(val => `<option value="${val}">${val}</option>`) 
+      .join("");
+
+    let backgroundImage = "";
+    switch (tab) {
+      case "elettrico": backgroundImage = "url('lampadina.jpg')"; break;
+      case "idraulico": backgroundImage = "url('idraulico.jpg')"; break;
+      case "condizionamento": backgroundImage = "url('clima.jpg')"; break;
+      case "riscaldamento": backgroundImage = "url('fiamma.jpg')"; break;
+      case "fotovoltaico": backgroundImage = "url('fotovoltaico.jpg')"; break;
+    }
+    formContainer.style.backgroundImage = backgroundImage;
+  }
+
+  tabButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      document.getElementById("title").value = button.textContent.trim();
+      document.querySelector(".tab-button.active").classList.remove("active");
+      button.classList.add("active");
+      aggiornaTipologie(button.dataset.tab);
+    });
+  });
+
+  aggiornaTipologie("elettrico");
+
+  function getNextTicketNumber() {
+    const now = new Date();
+    const datePart = now.toISOString().slice(0, 10).replace(/-/g, ''); // AAAAMMGG
+    const storedData = JSON.parse(localStorage.getItem("ticketCounter") || "{}");
+
+    let counter = 1;
+    if (storedData.date === datePart) {
+      counter = storedData.counter + 1;
+    }
+
+    localStorage.setItem("ticketCounter", JSON.stringify({
+      date: datePart,
+      counter: counter
+    }));
+
+    const counterStr = String(counter).padStart(3, "0");
+    return `${datePart}-${counterStr}`;
+  }
+
+  document.getElementById("form").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const ticketNumber = getNextTicketNumber();
+	const dataOra = new Date().toLocaleString(); // Aggiungi la data/ora
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.name = "ticket_number";
+    hiddenInput.value = ticketNumber;
+    this.appendChild(hiddenInput);
+
+    const formData = new FormData(this);
+    formData.append("ticket_number", ticketNumber);
+    formData.append("timestamp", new Date().toLocaleString());
+
+    fetch("salva_ticket.php", {
+      method: "POST",
+      body: formData
+    }).then(res => res.text()).then(response => {
+      if (response === "OK") {
+        alert("Segnalazione inviata con successo. Numero ticket #" + ticketNumber);
+      } else {
+        alert("Errore nel salvataggio del ticket.");
+      }
+    }).catch(error => {
+      console.error("Errore:", error);
+      alert("Errore nella comunicazione con il server.");
+    });
+
+    emailjs.sendForm("service_xzkm6ne", "template_oa66nla", this)
+      .catch(err => console.error("Errore invio email:", err));
+  });
+</script>
+</body>
+</html>
